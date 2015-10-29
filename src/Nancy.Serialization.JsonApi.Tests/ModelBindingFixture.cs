@@ -54,6 +54,7 @@ namespace Nancy.Serialization.JsonApi.Tests
             Assert.Equal(2, int.Parse(result.Body.AsString()));
         }
     }
+
     public class TestBootstrapper : ConfigurableBootstrapper
     {
         public TestBootstrapper(Action<ConfigurableBootstrapperConfigurator> configuration)

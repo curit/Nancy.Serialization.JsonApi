@@ -43,6 +43,7 @@
         {
             // Given
             JsonConvert.DefaultSettings = GetJsonSerializerSettings;
+
             var data = new Thing {
                 Id = 5,
                 SomeString = "some string value",
