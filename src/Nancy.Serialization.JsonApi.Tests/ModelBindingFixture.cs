@@ -24,7 +24,7 @@ namespace Nancy.Serialization.JsonApi.Tests
             var result = browser.Post("/stuff", with =>
             {
                 with.HttpRequest();
-                with.JsonBody(new Stuff(1), new JsonNetSerializer());
+                with.JsonBody(new Stuff(1), new JsonApiSerializer());
             });
 
             // Then
@@ -47,7 +47,7 @@ namespace Nancy.Serialization.JsonApi.Tests
             var result = browser.Post("/stuff", with =>
             {
                 with.HttpRequest();
-                with.JsonBody(new List<Stuff> {new Stuff(1), new Stuff(2)}, new JsonNetSerializer());
+                with.JsonBody(new List<Stuff> {new Stuff(1), new Stuff(2)}, new JsonApiSerializer());
             });
 
             // Then
@@ -69,7 +69,7 @@ namespace Nancy.Serialization.JsonApi.Tests
         {
             get
             {
-                yield return typeof(JsonNetBodyDeserializer);
+                yield return typeof(JsonApiBodyDeserializer);
             }
         }
     }

@@ -48,8 +48,8 @@
             object actual;
             using (var bodyStream = new MemoryStream(Encoding.UTF8.GetBytes(source)))
             {
-                IBodyDeserializer sut = new JsonNetBodyDeserializer();
-                actual = sut.Deserialize("application/json", bodyStream, context);
+                IBodyDeserializer sut = new JsonApiBodyDeserializer();
+                actual = sut.Deserialize("application/vnd.api+json", bodyStream, context);
             }
 
             // Then

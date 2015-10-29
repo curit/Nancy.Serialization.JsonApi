@@ -1,7 +1,12 @@
 ﻿namespace Nancy.Serialization.JsonApi
 {
+    using System.Collections;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.IO;
+    using System.Linq;
+    using System.Reflection;
+    using Humanizer;
     using Nancy.IO;
     using Newtonsoft.Json;
 
@@ -43,7 +48,7 @@
         /// <value>An <see cref="IEnumerable{T}"/> of extensions if any are available, otherwise an empty enumerable.</value>
         public IEnumerable<string> Extensions
         {
-            get { yield return "json"; }
+            get { yield return "jsonapi"; }
         }
 
         /// <summary>
@@ -57,7 +62,71 @@
         {
             using (var writer = new JsonTextWriter(new StreamWriter(new UnclosableStreamWrapper(outputStream))))
             {
-                this.serializer.Serialize(writer, model);
+                var jsonapidict = new Dictionary<string, object>();
+
+                var modelName = typeof (TModel).Name;
+
+                var properties = typeof (TModel).GetProperties();
+
+                var idProp = model.GetIdPropertyByConvention();
+
+                Dictionary<string, object> attributes =
+                    properties
+                        .Where(p => p != idProp)
+                        .Where(p => (p.PropertyType.IsValueType || 
+                                     (p.PropertyType.GetIdPropertyByConvention() == null && p.PropertyType.GetInterfaces().All(i => i.Name != "IEnumerable`1")) ||
+                                     (p.PropertyType.GetInterfaces().Any(i => i.Name == "IEnumerable`1") &&
+                                      p.PropertyType.GetInterfaces().First(i => i.Name == "IEnumerable`1").GetGenericArguments().First().GetIdPropertyByConvention() == null))
+                         )
+                        .ToDictionary(p => p.Name.ToKebabCase(), p => p.GetValue(model, null));
+
+                var relationships =
+                    properties
+                        .Where(p => !attributes.ContainsKey(p.Name.ToKebabCase()))
+                        .Where(p => p != idProp)
+                        .ToDictionary(p => p.Name.ToKebabCase(), p =>
+                        {
+                            object data;
+                            if (p.PropertyType.GetInterfaces().Any(i => i.Name == "IEnumerable`1"))
+                            {
+                                var type = p.PropertyType.GetInterfaces().First(i => i.Name == "IEnumerable`1").GetGenericArguments().First();
+                                var idProperty = type.GetIdPropertyByConvention();
+                                IEnumerable enumerable = (IEnumerable) p.GetValue(model, null);
+                                data = from object item in enumerable
+                                    select new Dictionary<string, string>
+                                    {
+                                        {"type", type.Name.Pluralize().ToKebabCase() },
+                                        {"id", idProperty.GetValue(item, null).ToString()}
+                                    };
+                            }
+                            else
+                            {
+                                var type = p.PropertyType;
+                                var idProperty = p.PropertyType.GetIdPropertyByConvention();
+                                var item = p.GetValue(model, null);
+                                data = new Dictionary<string, string>
+                                {
+                                    { "type", type.Name.Pluralize().ToKebabCase() },
+                                    { "id", idProperty.GetValue(item, null).ToString() }
+                                };
+                            }
+
+                            return new Dictionary<string, object>
+                            {
+                                {
+                                    "data", data
+                                }
+                            };
+                        });
+
+
+                        
+                jsonapidict["type"] = modelName.Pluralize().ToKebabCase();
+                jsonapidict["id"] = idProp.GetValue(model, null).ToString();
+                jsonapidict["attributes"] = attributes;
+                jsonapidict["relationships"] = relationships;
+
+                this.serializer.Serialize(writer, new { data = jsonapidict });
             }
         }
     }
